@@ -1,0 +1,2167 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta
+    name="viewport"
+    content="width=device-width,initial-scale=1,viewport-fit=cover"
+  >
+  <meta name="theme-color" content="#10264f">
+  <title>ماسح الحضور السريع v5</title>
+
+  <style>
+    :root{
+      --navy:#10264f;
+      --blue:#173f73;
+      --light:#f1f5fa;
+      --line:#d4deea;
+      --green:#14804a;
+      --orange:#c56a00;
+      --red:#b42318;
+      --text:#10264f;
+      --muted:#66758b
+    }
+
+    *{box-sizing:border-box}
+
+    body{
+      margin:0;
+      min-height:100vh;
+      background:var(--light);
+      color:var(--text);
+      font-family:Arial,Tahoma,sans-serif
+    }
+
+    button,input,select{font:inherit}
+
+    .app{
+      width:min(720px,100%);
+      margin:auto;
+      padding:12px
+    }
+
+    .header{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:10px;
+      margin-bottom:10px
+    }
+
+    h1{
+      margin:0;
+      color:var(--navy);
+      font-size:23px
+    }
+
+    .version{
+      font-size:12px;
+      color:var(--muted)
+    }
+
+    .small{
+      color:var(--muted);
+      font-size:14px;
+      line-height:1.6
+    }
+
+    .card{
+      background:#fff;
+      border-radius:16px;
+      padding:14px;
+      box-shadow:0 7px 22px rgba(14,46,94,.08);
+      margin-bottom:11px
+    }
+
+    .hidden{display:none!important}
+
+    label{
+      display:block;
+      margin:10px 0 5px;
+      font-weight:bold
+    }
+
+    input,select{
+      width:100%;
+      padding:12px;
+      border:1px solid var(--line);
+      border-radius:10px;
+      background:#fff
+    }
+
+    input[type="url"],
+    input[type="password"]{
+      direction:ltr;
+      text-align:left
+    }
+
+    .buttons{
+      display:flex;
+      flex-wrap:wrap;
+      gap:8px;
+      margin-top:11px
+    }
+
+    button{
+      border:0;
+      padding:12px 14px;
+      border-radius:10px;
+      background:var(--blue);
+      color:#fff;
+      font-weight:bold;
+      cursor:pointer
+    }
+
+    button.secondary{
+      background:#e8eef6;
+      color:var(--navy)
+    }
+
+    button.danger{background:var(--red)}
+    button:disabled{opacity:.5;cursor:not-allowed}
+
+    .session{
+      display:grid;
+      grid-template-columns:repeat(3,1fr);
+      gap:8px
+    }
+
+    .stat{
+      padding:10px 6px;
+      text-align:center;
+      background:#f4f7fb;
+      border-radius:10px
+    }
+
+    .stat span{
+      display:block;
+      color:var(--muted);
+      font-size:12px
+    }
+
+    .stat strong{
+      display:block;
+      margin-top:4px;
+      font-size:19px
+    }
+
+    .connection{
+      margin-top:9px;
+      padding:10px;
+      border-radius:10px;
+      background:#fff1d8;
+      color:#865800;
+      line-height:1.6
+    }
+
+    .connection.ok{
+      background:#dff3e8;
+      color:#176b35
+    }
+
+    .connection.error{
+      background:#fde5e3;
+      color:#9e2017
+    }
+
+    .camera-row{
+      display:flex;
+      gap:8px;
+      align-items:flex-end
+    }
+
+    .camera-row .select-wrap{flex:1}
+
+    .camera-shell{
+      position:relative;
+      width:100%;
+      min-height:310px;
+      margin-top:10px;
+      background:#071120;
+      border-radius:15px;
+      overflow:hidden
+    }
+
+    #cameraVideo{
+      width:100%;
+      height:100%;
+      min-height:310px;
+      max-height:520px;
+      display:block;
+      object-fit:cover;
+      background:#071120
+    }
+
+    .scan-frame{
+      position:absolute;
+      left:50%;
+      top:50%;
+      width:min(74vw,330px);
+      height:min(74vw,330px);
+      transform:translate(-50%,-50%);
+      border:3px solid rgba(255,255,255,.95);
+      border-radius:18px;
+      box-shadow:
+        0 0 0 9999px rgba(0,0,0,.22),
+        0 0 18px rgba(255,255,255,.35);
+      pointer-events:none
+    }
+
+    .scan-frame::before,
+    .scan-frame::after{
+      content:"";
+      position:absolute;
+      width:46px;
+      height:46px;
+      border-color:#42d889;
+      border-style:solid
+    }
+
+    .scan-frame::before{
+      right:-4px;
+      top:-4px;
+      border-width:5px 5px 0 0;
+      border-radius:0 15px 0 0
+    }
+
+    .scan-frame::after{
+      left:-4px;
+      bottom:-4px;
+      border-width:0 0 5px 5px;
+      border-radius:0 0 0 15px
+    }
+
+    .camera-state{
+      position:absolute;
+      right:12px;
+      left:12px;
+      bottom:12px;
+      padding:8px 10px;
+      border-radius:9px;
+      background:rgba(7,17,32,.72);
+      color:#fff;
+      text-align:center;
+      line-height:1.5;
+      backdrop-filter:blur(3px)
+    }
+
+    #processingCanvas{display:none}
+
+    .tip{
+      margin-top:9px;
+      padding:10px;
+      border-radius:10px;
+      background:#eef5ff;
+      color:#294d77;
+      text-align:center;
+      line-height:1.7;
+      font-weight:bold
+    }
+
+    .result{
+      text-align:center;
+      border-top:8px solid var(--blue);
+      min-height:245px
+    }
+
+    .result.success{border-top-color:var(--green)}
+    .result.warning{border-top-color:var(--orange)}
+    .result.error{border-top-color:var(--red)}
+
+    .photo{
+      width:140px;
+      height:140px;
+      margin:3px auto 10px;
+      border-radius:50%;
+      overflow:hidden;
+      background:#e7edf5;
+      border:5px solid #d9e8f8;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      color:#72839a;
+      font-weight:bold;
+      padding:10px
+    }
+
+    .photo img{
+      width:100%;
+      height:100%;
+      object-fit:cover;
+      object-position:center top
+    }
+
+    .student-name{
+      font-size:26px;
+      font-weight:900;
+      margin:6px 0
+    }
+
+    .status-badge{
+      display:inline-block;
+      padding:7px 19px;
+      border-radius:30px;
+      background:var(--blue);
+      color:#fff;
+      font-size:18px;
+      font-weight:bold
+    }
+
+    .success .status-badge{background:var(--green)}
+    .warning .status-badge{background:var(--orange)}
+    .error .status-badge{background:var(--red)}
+
+    .result-message{
+      margin-top:10px;
+      color:var(--muted);
+      line-height:1.7
+    }
+
+    .student-details{
+      display:flex;
+      justify-content:center;
+      flex-wrap:wrap;
+      gap:12px;
+      margin-top:9px;
+      font-size:15px
+    }
+
+    .manual{
+      display:flex;
+      gap:8px
+    }
+
+    .manual input{flex:1}
+    .manual button{white-space:nowrap}
+
+    .file-input{display:none}
+
+    @media (max-width:520px){
+      .app{padding:8px}
+      h1{font-size:20px}
+      .session{grid-template-columns:1fr 1fr}
+      .camera-shell,
+      #cameraVideo{min-height:290px}
+      .camera-row{align-items:stretch}
+      .student-name{font-size:23px}
+    }
+  </style>
+</head>
+
+<body>
+  <main class="app">
+    <header class="header">
+      <div>
+        <h1>ماسح الحضور السريع</h1>
+        <div class="small">
+          قارئ خفيف يستخدم كاميرا المتصفح الأصلية.
+        </div>
+      </div>
+
+      <div>
+        <span class="version">v5.0</span>
+        <button
+          id="settingsToggle"
+          class="secondary"
+          type="button"
+          style="display:block;margin-top:4px"
+        >
+          الإعدادات
+        </button>
+      </div>
+    </header>
+
+    <section id="settingsCard" class="card">
+      <label for="webAppUrl">رابط تطبيق الحضور</label>
+      <input
+        id="webAppUrl"
+        type="url"
+        placeholder="الرابط المنتهي بـ /exec"
+        autocomplete="off"
+      >
+
+      <label for="scannerToken">مفتاح الماسح</label>
+      <input
+        id="scannerToken"
+        type="password"
+        placeholder="مفتاح ماسح الحضور"
+        autocomplete="off"
+      >
+
+      <div class="buttons">
+        <button id="saveSettings" type="button">
+          حفظ الإعدادات
+        </button>
+
+        <button
+          id="testConnection"
+          class="secondary"
+          type="button"
+        >
+          اختبار الاتصال
+        </button>
+
+        <button
+          id="openLogin"
+          class="secondary"
+          type="button"
+        >
+          فتح تطبيق الحضور
+        </button>
+      </div>
+    </section>
+
+    <section class="card">
+      <div class="session">
+        <div class="stat">
+          <span>المجموعة</span>
+          <strong id="sessionGroup">—</strong>
+        </div>
+
+        <div class="stat">
+          <span>تم تسجيلهم</span>
+          <strong id="registeredCount">0</strong>
+        </div>
+
+        <div class="stat">
+          <span>إجمالي المجموعة</span>
+          <strong id="totalStudents">0</strong>
+        </div>
+      </div>
+
+      <div id="connection" class="connection">
+        احفظ الإعدادات ثم اختبر الاتصال.
+      </div>
+    </section>
+
+    <section class="card">
+      <div class="camera-row">
+        <div class="select-wrap">
+          <label for="cameraSelect">عدسة الكاميرا</label>
+          <select id="cameraSelect">
+            <option value="">اختيار تلقائي للكاميرا الخلفية</option>
+          </select>
+        </div>
+
+        <button
+          id="refreshCameras"
+          class="secondary"
+          type="button"
+        >
+          تحديث
+        </button>
+      </div>
+
+      <div class="camera-shell">
+        <video
+          id="cameraVideo"
+          autoplay
+          muted
+          playsinline
+        ></video>
+
+        <div class="scan-frame"></div>
+
+        <div id="cameraState" class="camera-state">
+          الكاميرا متوقفة.
+        </div>
+      </div>
+
+      <canvas id="processingCanvas"></canvas>
+
+      <div class="buttons">
+        <button id="startCamera" type="button">
+          تشغيل الكاميرا
+        </button>
+
+        <button
+          id="stopCamera"
+          class="danger"
+          type="button"
+          disabled
+        >
+          إيقاف الكاميرا
+        </button>
+
+        <button
+          id="toggleTorch"
+          class="secondary"
+          type="button"
+          disabled
+        >
+          تشغيل الفلاش
+        </button>
+
+        <button
+          id="cycleZoom"
+          class="secondary"
+          type="button"
+          disabled
+        >
+          تكبير الكاميرا
+        </button>
+
+        <button
+          id="scanPhoto"
+          class="secondary"
+          type="button"
+        >
+          قراءة من صورة
+        </button>
+
+        <input
+          id="photoInput"
+          class="file-input"
+          type="file"
+          accept="image/*"
+          capture="environment"
+        >
+      </div>
+
+      <div class="tip">
+        ضع QR داخل المربع الأخضر وقرّب الكارت حتى يشغل الرمز
+        نحو نصف المربع. جرّب العدسات الخلفية من القائمة لو لم يثبت التركيز.
+      </div>
+    </section>
+
+    <section id="resultCard" class="card result">
+      <div id="photoBox" class="photo">بانتظار طالب</div>
+      <div id="studentName" class="student-name">
+        الماسح جاهز
+      </div>
+      <div id="statusBadge" class="status-badge">
+        جاهز
+      </div>
+      <div id="resultMessage" class="result-message">
+        اختبر الاتصال ثم شغّل الكاميرا.
+      </div>
+      <div id="studentDetails" class="student-details"></div>
+    </section>
+
+    <section class="card">
+      <div class="small" style="margin-bottom:7px">
+        تسجيل يدوي سريع:
+      </div>
+
+      <div class="manual">
+        <input
+          id="manualCode"
+          type="text"
+          placeholder="كود الطالب"
+          autocomplete="off"
+        >
+
+        <button id="manualRegister" type="button">
+          تسجيل
+        </button>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    const APP_SOURCE = 'YR_ATTENDANCE_SCANNER_V4_1';
+    const STORAGE_URL = 'yr_attendance_web_app_url_v4';
+    const STORAGE_TOKEN = 'yr_attendance_scanner_token_v4';
+    const STORAGE_CAMERA = 'yr_attendance_camera_id_v5';
+    const JSONP_CALLBACK = '__yrAttendanceJsonpV5';
+
+    const elements = {};
+    const pendingJsonp = new Map();
+
+    let connectionReady = false;
+    let stream = null;
+    let videoTrack = null;
+    let scanning = false;
+    let frameBusy = false;
+    let scanLocked = false;
+    let lastFrameAt = 0;
+    let lastCode = '';
+    let lastCodeAt = 0;
+    let currentRequestId = '';
+    let nativeDetector = null;
+    let decoderMode = '';
+    let jsQrLoadingPromise = null;
+    let torchEnabled = false;
+    let trackCapabilities = null;
+    let currentZoom = 1;
+    let zoomMin = 1;
+    let zoomMax = 1;
+    let zoomStep = .5;
+
+    window.addEventListener('DOMContentLoaded', function () {
+      [
+        'settingsCard',
+        'settingsToggle',
+        'webAppUrl',
+        'scannerToken',
+        'saveSettings',
+        'testConnection',
+        'openLogin',
+        'sessionGroup',
+        'registeredCount',
+        'totalStudents',
+        'connection',
+        'cameraSelect',
+        'refreshCameras',
+        'cameraVideo',
+        'cameraState',
+        'processingCanvas',
+        'startCamera',
+        'stopCamera',
+        'toggleTorch',
+        'cycleZoom',
+        'scanPhoto',
+        'photoInput',
+        'resultCard',
+        'photoBox',
+        'studentName',
+        'statusBadge',
+        'resultMessage',
+        'studentDetails',
+        'manualCode',
+        'manualRegister'
+      ].forEach(function (id) {
+        elements[id] = document.getElementById(id);
+      });
+
+      elements.webAppUrl.value =
+        localStorage.getItem(STORAGE_URL) || '';
+
+      elements.scannerToken.value =
+        localStorage.getItem(STORAGE_TOKEN) || '';
+
+      bindEvents();
+
+      if (hasSavedSettings()) {
+        setConnection(
+          'الإعدادات محفوظة. اضغط «اختبار الاتصال».',
+          ''
+        );
+      }
+
+      refreshCameraList(false);
+    });
+
+
+    function bindEvents() {
+      elements.settingsToggle.addEventListener(
+        'click',
+        function () {
+          elements.settingsCard.classList.toggle('hidden');
+        }
+      );
+
+      elements.saveSettings.addEventListener(
+        'click',
+        saveSettings
+      );
+
+      elements.testConnection.addEventListener(
+        'click',
+        testConnection
+      );
+
+      elements.openLogin.addEventListener(
+        'click',
+        openAttendanceLogin
+      );
+
+      elements.refreshCameras.addEventListener(
+        'click',
+        function () {
+          refreshCameraList(true);
+        }
+      );
+
+      elements.cameraSelect.addEventListener(
+        'change',
+        function () {
+          localStorage.setItem(
+            STORAGE_CAMERA,
+            elements.cameraSelect.value
+          );
+
+          if (scanning) {
+            restartCamera();
+          }
+        }
+      );
+
+      elements.startCamera.addEventListener(
+        'click',
+        startCamera
+      );
+
+      elements.stopCamera.addEventListener(
+        'click',
+        stopCamera
+      );
+
+      elements.toggleTorch.addEventListener(
+        'click',
+        toggleTorch
+      );
+
+      elements.cycleZoom.addEventListener(
+        'click',
+        cycleZoom
+      );
+
+      elements.scanPhoto.addEventListener(
+        'click',
+        function () {
+          elements.photoInput.click();
+        }
+      );
+
+      elements.photoInput.addEventListener(
+        'change',
+        scanSelectedPhoto
+      );
+
+      elements.manualRegister.addEventListener(
+        'click',
+        function () {
+          const code = elements.manualCode.value.trim();
+
+          if (!code) {
+            showSimpleError('اكتب كود الطالب أولًا.');
+            return;
+          }
+
+          processDecodedValue(code);
+          elements.manualCode.select();
+        }
+      );
+
+      elements.manualCode.addEventListener(
+        'keydown',
+        function (event) {
+          if (event.key === 'Enter') {
+            elements.manualRegister.click();
+          }
+        }
+      );
+    }
+
+
+    function hasSavedSettings() {
+      return Boolean(
+        getWebAppUrl() &&
+        getScannerToken()
+      );
+    }
+
+
+    function getWebAppUrl() {
+      return elements.webAppUrl.value.trim();
+    }
+
+
+    function getScannerToken() {
+      return elements.scannerToken.value.trim();
+    }
+
+
+    function normalizeWebAppUrl(value) {
+      return String(value || '')
+        .trim()
+        .replace(/[?&].*$/, '')
+        .replace(/\/+$/, '');
+    }
+
+
+    function saveSettings() {
+      const url = normalizeWebAppUrl(getWebAppUrl());
+      const token = getScannerToken();
+
+      if (!/^https:\/\/.+\/exec$/i.test(url)) {
+        showSimpleError(
+          'استخدم رابط تطبيق الحضور الذي ينتهي بـ /exec.'
+        );
+        return false;
+      }
+
+      if (token.length < 20) {
+        showSimpleError('مفتاح الماسح غير صحيح.');
+        return false;
+      }
+
+      elements.webAppUrl.value = url;
+      localStorage.setItem(STORAGE_URL, url);
+      localStorage.setItem(STORAGE_TOKEN, token);
+
+      setConnection(
+        'تم حفظ الإعدادات. اضغط «اختبار الاتصال».',
+        ''
+      );
+
+      return true;
+    }
+
+
+    function testConnection() {
+      if (!saveSettings()) {
+        return;
+      }
+
+      connectionReady = false;
+
+      setConnection(
+        'جاري اختبار الاتصال بنظام الحضور...',
+        ''
+      );
+
+      requestJsonp(
+        'status',
+        {},
+        createRequestId(),
+        18000
+      );
+    }
+
+
+    function openAttendanceLogin() {
+      if (!saveSettings()) {
+        return;
+      }
+
+      window.open(getWebAppUrl(), '_blank');
+    }
+
+
+    function buildApiUrl(apiName, extraParams, requestId) {
+      const url = new URL(getWebAppUrl());
+
+      url.searchParams.set('scannerApi', apiName);
+      url.searchParams.set('token', getScannerToken());
+      url.searchParams.set('callback', JSONP_CALLBACK);
+      url.searchParams.set('rid', requestId);
+
+      Object.keys(extraParams || {}).forEach(function (key) {
+        url.searchParams.set(key, extraParams[key]);
+      });
+
+      url.searchParams.set('nonce', String(Date.now()));
+      return url.toString();
+    }
+
+
+    function requestJsonp(
+      apiName,
+      extraParams,
+      requestId,
+      timeoutMs
+    ) {
+      const id = String(requestId || createRequestId());
+      const script = document.createElement('script');
+
+      script.async = true;
+      script.src = buildApiUrl(
+        apiName,
+        extraParams || {},
+        id
+      );
+
+      script.onerror = function () {
+        cleanupJsonp(id);
+
+        if (apiName === 'status') {
+          connectionReady = false;
+          setConnection(
+            'تعذر الاتصال. افتح تطبيق الحضور وسجل الدخول ثم أعد الاختبار.',
+            'error'
+          );
+        } else {
+          showSimpleError(
+            'تعذر الوصول إلى نظام التسجيل.'
+          );
+        }
+      };
+
+      const timer = window.setTimeout(function () {
+        cleanupJsonp(id);
+
+        if (apiName === 'status') {
+          connectionReady = false;
+          setConnection(
+            'انتهت مهلة الاتصال. افتح تطبيق الحضور وسجل الدخول ثم أعد الاختبار.',
+            'error'
+          );
+        } else {
+          showSimpleError(
+            'لم يصل رد التسجيل خلال الوقت المحدد.'
+          );
+        }
+      }, Number(timeoutMs || 18000));
+
+      pendingJsonp.set(id, {
+        script:script,
+        timer:timer
+      });
+
+      document.head.appendChild(script);
+    }
+
+
+    function cleanupJsonp(requestId) {
+      const pending = pendingJsonp.get(requestId);
+
+      if (!pending) {
+        return;
+      }
+
+      clearTimeout(pending.timer);
+
+      if (
+        pending.script &&
+        pending.script.parentNode
+      ) {
+        pending.script.parentNode.removeChild(
+          pending.script
+        );
+      }
+
+      pendingJsonp.delete(requestId);
+    }
+
+
+    window[JSONP_CALLBACK] = function (message) {
+      if (!message || message.source !== APP_SOURCE) {
+        return;
+      }
+
+      cleanupJsonp(message.requestId);
+
+      if (
+        message.type === 'attendance-scanner-status'
+      ) {
+        handleStatusMessage(message.payload || {});
+        return;
+      }
+
+      if (
+        message.type === 'attendance-scanner-result'
+      ) {
+        if (
+          message.requestId &&
+          currentRequestId &&
+          message.requestId !== currentRequestId
+        ) {
+          return;
+        }
+
+        handleAttendanceResult(message.payload || {});
+        return;
+      }
+
+      if (
+        message.type === 'attendance-scanner-photo'
+      ) {
+        handlePhotoResult(message.payload || {});
+        return;
+      }
+
+      if (
+        message.type === 'attendance-scanner-error'
+      ) {
+        showSimpleError(
+          message.payload && message.payload.message
+            ? message.payload.message
+            : 'حدث خطأ أثناء الاتصال بالنظام.'
+        );
+      }
+    };
+
+
+    async function prepareDecoder() {
+      nativeDetector = null;
+      decoderMode = '';
+
+      if ('BarcodeDetector' in window) {
+        try {
+          const formats =
+            typeof BarcodeDetector.getSupportedFormats === 'function'
+              ? await BarcodeDetector.getSupportedFormats()
+              : ['qr_code'];
+
+          if (formats.includes('qr_code')) {
+            nativeDetector = new BarcodeDetector({
+              formats:['qr_code']
+            });
+
+            decoderMode = 'native';
+            return;
+          }
+        } catch (error) {
+          console.warn('Native detector unavailable', error);
+        }
+      }
+
+      await loadJsQr();
+      decoderMode = 'jsqr';
+    }
+
+
+    function loadJsQr() {
+      if (typeof window.jsQR === 'function') {
+        return Promise.resolve();
+      }
+
+      if (jsQrLoadingPromise) {
+        return jsQrLoadingPromise;
+      }
+
+      jsQrLoadingPromise = new Promise(function (resolve, reject) {
+        const script = document.createElement('script');
+
+        script.async = true;
+        script.src =
+          'https://cdnjs.cloudflare.com/ajax/libs/jsQR/1.4.0/jsQR.min.js';
+
+        script.onload = function () {
+          if (typeof window.jsQR === 'function') {
+            resolve();
+          } else {
+            reject(new Error('لم يتم تحميل قارئ QR الاحتياطي.'));
+          }
+        };
+
+        script.onerror = function () {
+          reject(new Error('تعذر تحميل قارئ QR الاحتياطي.'));
+        };
+
+        document.head.appendChild(script);
+      });
+
+      return jsQrLoadingPromise;
+    }
+
+
+    async function refreshCameraList(requestPermission) {
+      if (
+        !navigator.mediaDevices ||
+        !navigator.mediaDevices.enumerateDevices
+      ) {
+        return;
+      }
+
+      let temporaryStream = null;
+
+      try {
+        if (requestPermission) {
+          temporaryStream =
+            await navigator.mediaDevices.getUserMedia({
+              video:{
+                facingMode:{ideal:'environment'}
+              },
+              audio:false
+            });
+        }
+
+        const devices =
+          await navigator.mediaDevices.enumerateDevices();
+
+        const cameras = devices.filter(function (device) {
+          return device.kind === 'videoinput';
+        });
+
+        fillCameraSelect(cameras);
+
+      } catch (error) {
+        if (requestPermission) {
+          showSimpleError(cameraErrorMessage(error));
+        }
+      } finally {
+        if (temporaryStream) {
+          temporaryStream.getTracks().forEach(function (track) {
+            track.stop();
+          });
+        }
+      }
+    }
+
+
+    function fillCameraSelect(cameras) {
+      const savedId =
+        localStorage.getItem(STORAGE_CAMERA) || '';
+
+      const currentId = elements.cameraSelect.value || savedId;
+
+      elements.cameraSelect.innerHTML =
+        '<option value="">اختيار تلقائي للكاميرا الخلفية</option>';
+
+      const sorted = cameras.slice().sort(function (a, b) {
+        return cameraScore(b.label) - cameraScore(a.label);
+      });
+
+      sorted.forEach(function (camera, index) {
+        const option = document.createElement('option');
+
+        option.value = camera.deviceId;
+        option.textContent =
+          camera.label ||
+          'كاميرا ' + String(index + 1);
+
+        elements.cameraSelect.appendChild(option);
+      });
+
+      if (
+        currentId &&
+        cameras.some(function (camera) {
+          return camera.deviceId === currentId;
+        })
+      ) {
+        elements.cameraSelect.value = currentId;
+      } else if (sorted.length) {
+        elements.cameraSelect.value =
+          bestCameraId(sorted);
+
+        localStorage.setItem(
+          STORAGE_CAMERA,
+          elements.cameraSelect.value
+        );
+      }
+    }
+
+
+    function cameraScore(label) {
+      const text = String(label || '').toLowerCase();
+      let score = 0;
+
+      if (/back|rear|environment|خلف/i.test(text)) score += 100;
+      if (/front|user|أمام/i.test(text)) score -= 200;
+      if (/main|primary|wide|0\b/i.test(text)) score += 30;
+      if (/ultra|macro|tele|depth/i.test(text)) score -= 35;
+
+      return score;
+    }
+
+
+    function bestCameraId(cameras) {
+      const best = cameras
+        .slice()
+        .sort(function (a, b) {
+          return cameraScore(b.label) - cameraScore(a.label);
+        })[0];
+
+      return best ? best.deviceId : '';
+    }
+
+
+    async function startCamera() {
+      if (!hasSavedSettings()) {
+        showSimpleError(
+          'احفظ رابط التطبيق ومفتاح الماسح أولًا.'
+        );
+        elements.settingsCard.classList.remove('hidden');
+        return;
+      }
+
+      if (!connectionReady) {
+        showSimpleError(
+          'اضغط «اختبار الاتصال» أولًا.'
+        );
+        return;
+      }
+
+      if (
+        !navigator.mediaDevices ||
+        !navigator.mediaDevices.getUserMedia
+      ) {
+        showSimpleError(
+          'المتصفح لا يدعم تشغيل الكاميرا من صفحة الويب.'
+        );
+        return;
+      }
+
+      if (scanning) {
+        return;
+      }
+
+      elements.cameraState.textContent =
+        'جاري تجهيز قارئ QR...';
+
+      try {
+        await prepareDecoder();
+
+        if (!elements.cameraSelect.options.length ||
+            elements.cameraSelect.options.length === 1) {
+          await refreshCameraList(true);
+        }
+
+        await openSelectedCamera();
+
+      } catch (error) {
+        await stopCamera();
+
+        showSimpleError(
+          error && error.message
+            ? error.message
+            : cameraErrorMessage(error)
+        );
+      }
+    }
+
+
+    async function openSelectedCamera() {
+      await stopCamera();
+
+      const selectedId = elements.cameraSelect.value;
+
+      const videoConstraints = {
+        width:{ideal:1920},
+        height:{ideal:1080},
+        frameRate:{ideal:30,min:15}
+      };
+
+      if (selectedId) {
+        videoConstraints.deviceId = {
+          exact:selectedId
+        };
+      } else {
+        videoConstraints.facingMode = {
+          ideal:'environment'
+        };
+      }
+
+      stream = await navigator.mediaDevices.getUserMedia({
+        video:videoConstraints,
+        audio:false
+      });
+
+      elements.cameraVideo.srcObject = stream;
+
+      await waitForVideo(elements.cameraVideo);
+      await elements.cameraVideo.play();
+
+      videoTrack = stream.getVideoTracks()[0] || null;
+      scanning = true;
+
+      elements.startCamera.disabled = true;
+      elements.stopCamera.disabled = false;
+      elements.cameraState.textContent =
+        decoderMode === 'native'
+          ? 'قارئ النظام الأصلي يعمل — ضع QR داخل المربع.'
+          : 'القارئ الاحتياطي يعمل — ضع QR داخل المربع.';
+
+      await optimizeTrack();
+      await refreshCameraList(false);
+
+      requestAnimationFrame(scanLoop);
+    }
+
+
+    function waitForVideo(video) {
+      if (
+        video.readyState >= 2 &&
+        video.videoWidth > 0
+      ) {
+        return Promise.resolve();
+      }
+
+      return new Promise(function (resolve, reject) {
+        const timer = setTimeout(function () {
+          cleanup();
+          reject(new Error('لم تصل صورة الكاميرا.'));
+        }, 10000);
+
+        function cleanup() {
+          clearTimeout(timer);
+          video.removeEventListener('loadedmetadata', done);
+          video.removeEventListener('canplay', done);
+        }
+
+        function done() {
+          cleanup();
+          resolve();
+        }
+
+        video.addEventListener('loadedmetadata', done);
+        video.addEventListener('canplay', done);
+      });
+    }
+
+
+    async function optimizeTrack() {
+      if (!videoTrack) {
+        return;
+      }
+
+      trackCapabilities =
+        typeof videoTrack.getCapabilities === 'function'
+          ? videoTrack.getCapabilities()
+          : null;
+
+      const advanced = [];
+
+      if (
+        trackCapabilities &&
+        Array.isArray(trackCapabilities.focusMode) &&
+        trackCapabilities.focusMode.includes('continuous')
+      ) {
+        advanced.push({
+          focusMode:'continuous'
+        });
+      }
+
+      if (
+        trackCapabilities &&
+        trackCapabilities.zoom
+      ) {
+        zoomMin = Number(trackCapabilities.zoom.min || 1);
+        zoomMax = Number(trackCapabilities.zoom.max || zoomMin);
+        zoomStep = Number(trackCapabilities.zoom.step || .5);
+
+        currentZoom = Math.min(
+          zoomMax,
+          Math.max(zoomMin, 1.5)
+        );
+
+        if (zoomMax > zoomMin) {
+          advanced.push({
+            zoom:currentZoom
+          });
+
+          elements.cycleZoom.disabled = false;
+          elements.cycleZoom.textContent =
+            'التكبير ' + currentZoom.toFixed(1) + '×';
+        }
+      }
+
+      elements.toggleTorch.disabled = !Boolean(
+        trackCapabilities &&
+        trackCapabilities.torch
+      );
+
+      if (advanced.length) {
+        try {
+          await videoTrack.applyConstraints({
+            advanced:advanced
+          });
+        } catch (error) {
+          console.warn('Camera optimization failed', error);
+        }
+      }
+    }
+
+
+    async function restartCamera() {
+      if (!scanning) {
+        return;
+      }
+
+      elements.cameraState.textContent =
+        'جاري تغيير عدسة الكاميرا...';
+
+      try {
+        await openSelectedCamera();
+      } catch (error) {
+        showSimpleError(cameraErrorMessage(error));
+      }
+    }
+
+
+    async function stopCamera() {
+      scanning = false;
+      frameBusy = false;
+
+      if (stream) {
+        stream.getTracks().forEach(function (track) {
+          track.stop();
+        });
+      }
+
+      stream = null;
+      videoTrack = null;
+      trackCapabilities = null;
+      torchEnabled = false;
+      currentZoom = 1;
+      zoomMin = 1;
+      zoomMax = 1;
+
+      if (elements.cameraVideo) {
+        elements.cameraVideo.srcObject = null;
+      }
+
+      if (elements.startCamera) {
+        elements.startCamera.disabled = false;
+        elements.stopCamera.disabled = true;
+        elements.toggleTorch.disabled = true;
+        elements.cycleZoom.disabled = true;
+        elements.toggleTorch.textContent = 'تشغيل الفلاش';
+        elements.cycleZoom.textContent = 'تكبير الكاميرا';
+        elements.cameraState.textContent = 'الكاميرا متوقفة.';
+      }
+    }
+
+
+    async function toggleTorch() {
+      if (
+        !videoTrack ||
+        !trackCapabilities ||
+        !trackCapabilities.torch
+      ) {
+        return;
+      }
+
+      torchEnabled = !torchEnabled;
+
+      try {
+        await videoTrack.applyConstraints({
+          advanced:[
+            {
+              torch:torchEnabled
+            }
+          ]
+        });
+
+        elements.toggleTorch.textContent =
+          torchEnabled
+            ? 'إيقاف الفلاش'
+            : 'تشغيل الفلاش';
+
+      } catch (error) {
+        torchEnabled = false;
+        showSimpleError('الفلاش غير متاح من هذه العدسة.');
+      }
+    }
+
+
+    async function cycleZoom() {
+      if (
+        !videoTrack ||
+        zoomMax <= zoomMin
+      ) {
+        return;
+      }
+
+      let nextZoom =
+        currentZoom + Math.max(zoomStep, .5);
+
+      if (nextZoom > zoomMax + .01) {
+        nextZoom = zoomMin;
+      }
+
+      nextZoom = Math.min(
+        zoomMax,
+        Math.max(zoomMin, nextZoom)
+      );
+
+      try {
+        await videoTrack.applyConstraints({
+          advanced:[
+            {
+              zoom:nextZoom
+            }
+          ]
+        });
+
+        currentZoom = nextZoom;
+
+        elements.cycleZoom.textContent =
+          'التكبير ' + currentZoom.toFixed(1) + '×';
+
+      } catch (error) {
+        console.warn(error);
+      }
+    }
+
+
+    async function scanLoop(timestamp) {
+      if (!scanning) {
+        return;
+      }
+
+      requestAnimationFrame(scanLoop);
+
+      if (
+        frameBusy ||
+        scanLocked ||
+        timestamp - lastFrameAt < 90 ||
+        elements.cameraVideo.readyState < 2
+      ) {
+        return;
+      }
+
+      lastFrameAt = timestamp;
+      frameBusy = true;
+
+      try {
+        const decoded =
+          decoderMode === 'native'
+            ? await scanNative()
+            : scanWithJsQr();
+
+        if (decoded) {
+          processDecodedValue(decoded);
+        }
+      } catch (error) {
+        console.warn('Scan frame failed', error);
+      } finally {
+        frameBusy = false;
+      }
+    }
+
+
+    async function scanNative() {
+      if (!nativeDetector) {
+        return '';
+      }
+
+      const codes =
+        await nativeDetector.detect(elements.cameraVideo);
+
+      return (
+        codes &&
+        codes[0] &&
+        codes[0].rawValue
+      ) || '';
+    }
+
+
+    function scanWithJsQr() {
+      if (typeof window.jsQR !== 'function') {
+        return '';
+      }
+
+      const video = elements.cameraVideo;
+      const canvas = elements.processingCanvas;
+      const context = canvas.getContext(
+        '2d',
+        {
+          willReadFrequently:true
+        }
+      );
+
+      const sourceWidth = video.videoWidth;
+      const sourceHeight = video.videoHeight;
+
+      if (!sourceWidth || !sourceHeight) {
+        return '';
+      }
+
+      const cropSize = Math.floor(
+        Math.min(sourceWidth, sourceHeight) * .86
+      );
+
+      const sourceX = Math.floor(
+        (sourceWidth - cropSize) / 2
+      );
+
+      const sourceY = Math.floor(
+        (sourceHeight - cropSize) / 2
+      );
+
+      const outputSize = Math.min(
+        1100,
+        Math.max(720, cropSize)
+      );
+
+      canvas.width = outputSize;
+      canvas.height = outputSize;
+
+      context.filter = 'none';
+      context.drawImage(
+        video,
+        sourceX,
+        sourceY,
+        cropSize,
+        cropSize,
+        0,
+        0,
+        outputSize,
+        outputSize
+      );
+
+      let imageData = context.getImageData(
+        0,
+        0,
+        outputSize,
+        outputSize
+      );
+
+      let code = window.jsQR(
+        imageData.data,
+        outputSize,
+        outputSize,
+        {
+          inversionAttempts:'attemptBoth'
+        }
+      );
+
+      if (!code) {
+        context.filter =
+          'grayscale(1) contrast(1.8)';
+
+        context.drawImage(
+          video,
+          sourceX,
+          sourceY,
+          cropSize,
+          cropSize,
+          0,
+          0,
+          outputSize,
+          outputSize
+        );
+
+        imageData = context.getImageData(
+          0,
+          0,
+          outputSize,
+          outputSize
+        );
+
+        code = window.jsQR(
+          imageData.data,
+          outputSize,
+          outputSize,
+          {
+            inversionAttempts:'attemptBoth'
+          }
+        );
+      }
+
+      return code && code.data ? code.data : '';
+    }
+
+
+    async function scanSelectedPhoto(event) {
+      const file =
+        event &&
+        event.target &&
+        event.target.files
+          ? event.target.files[0]
+          : null;
+
+      if (!file) {
+        return;
+      }
+
+      try {
+        const bitmap = await createImageBitmap(file);
+        let value = '';
+
+        if ('BarcodeDetector' in window) {
+          try {
+            const detector = new BarcodeDetector({
+              formats:['qr_code']
+            });
+
+            const results = await detector.detect(bitmap);
+            value =
+              results &&
+              results[0] &&
+              results[0].rawValue
+                ? results[0].rawValue
+                : '';
+          } catch (error) {
+            console.warn(error);
+          }
+        }
+
+        if (!value) {
+          await loadJsQr();
+
+          const canvas = elements.processingCanvas;
+          const context = canvas.getContext(
+            '2d',
+            {
+              willReadFrequently:true
+            }
+          );
+
+          const maxSide = 1600;
+          const scale = Math.min(
+            1,
+            maxSide / Math.max(bitmap.width, bitmap.height)
+          );
+
+          canvas.width = Math.max(
+            1,
+            Math.floor(bitmap.width * scale)
+          );
+
+          canvas.height = Math.max(
+            1,
+            Math.floor(bitmap.height * scale)
+          );
+
+          context.drawImage(
+            bitmap,
+            0,
+            0,
+            canvas.width,
+            canvas.height
+          );
+
+          const imageData = context.getImageData(
+            0,
+            0,
+            canvas.width,
+            canvas.height
+          );
+
+          const code = window.jsQR(
+            imageData.data,
+            canvas.width,
+            canvas.height,
+            {
+              inversionAttempts:'attemptBoth'
+            }
+          );
+
+          value = code && code.data ? code.data : '';
+        }
+
+        if (!value) {
+          throw new Error(
+            'لم يتم العثور على QR واضح في الصورة.'
+          );
+        }
+
+        processDecodedValue(value);
+
+      } catch (error) {
+        showSimpleError(
+          error && error.message
+            ? error.message
+            : 'تعذر قراءة QR من الصورة.'
+        );
+      } finally {
+        elements.photoInput.value = '';
+      }
+    }
+
+
+    function processDecodedValue(rawValue) {
+      if (scanLocked) {
+        return;
+      }
+
+      const parsed = extractCode(rawValue);
+
+      if (!parsed.code) {
+        showSimpleError(
+          'الـQR لا يحتوي على كود طالب صحيح.'
+        );
+        return;
+      }
+
+      const now = Date.now();
+
+      if (
+        parsed.code === lastCode &&
+        now - lastCodeAt < 3500
+      ) {
+        return;
+      }
+
+      if (!connectionReady) {
+        showSimpleError(
+          'الاتصال بالنظام غير جاهز. اختبر الاتصال من جديد.'
+        );
+        return;
+      }
+
+      scanLocked = true;
+      lastCode = parsed.code;
+      lastCodeAt = now;
+      currentRequestId = createRequestId();
+
+      showWorking(parsed.code);
+
+      requestJsonp(
+        'register',
+        {
+          code:parsed.code
+        },
+        currentRequestId,
+        18000
+      );
+    }
+
+
+    function extractCode(rawValue) {
+      const text = String(rawValue || '').trim();
+
+      if (!text) {
+        return {code:''};
+      }
+
+      try {
+        const url = new URL(text);
+        const code = url.searchParams.get('code');
+
+        if (code) {
+          return {
+            code:normalizeCode(code)
+          };
+        }
+      } catch (error) {}
+
+      const match = text.match(/[?&]code=([^&#]+)/i);
+
+      if (match && match[1]) {
+        return {
+          code:normalizeCode(
+            decodeURIComponent(match[1])
+          )
+        };
+      }
+
+      return {
+        code:normalizeCode(text)
+      };
+    }
+
+
+    function normalizeCode(value) {
+      return String(value || '')
+        .trim()
+        .toUpperCase()
+        .replace(/\s+/g, '');
+    }
+
+
+    function handleStatusMessage(payload) {
+      if (!payload.ok) {
+        connectionReady = false;
+
+        setConnection(
+          payload.message || 'فشل الاتصال بالنظام.',
+          'error'
+        );
+
+        return;
+      }
+
+      connectionReady = true;
+
+      if (!payload.isOpen) {
+        elements.sessionGroup.textContent = 'مغلقة';
+        elements.registeredCount.textContent = '0';
+        elements.totalStudents.textContent = '0';
+
+        setConnection(
+          payload.message || 'الحضور مغلق حاليًا.',
+          ''
+        );
+
+        return;
+      }
+
+      elements.sessionGroup.textContent =
+        payload.group || '—';
+
+      elements.registeredCount.textContent =
+        String(payload.registeredCount || 0);
+
+      elements.totalStudents.textContent =
+        String(payload.totalStudents || 0);
+
+      setConnection(
+        payload.message || 'تم الاتصال بالحصة.',
+        'ok'
+      );
+    }
+
+
+    function handleAttendanceResult(payload) {
+      const student = payload.student || null;
+
+      if (student) {
+        elements.studentName.textContent =
+          student.name || 'طالب';
+
+        elements.studentDetails.innerHTML =
+          '<span>الكود: <strong dir="ltr">' +
+          escapeHtml(student.code || '') +
+          '</strong></span>' +
+          '<span>المجموعة: <strong dir="ltr">' +
+          escapeHtml(student.group || '') +
+          '</strong></span>';
+      } else {
+        elements.studentName.textContent =
+          payload.ok ? 'تم التسجيل' : 'لم يتم التسجيل';
+
+        elements.studentDetails.textContent = '';
+      }
+
+      elements.photoBox.textContent =
+        payload.photoRef
+          ? 'جاري تحميل الصورة'
+          : 'بدون صورة';
+
+      if (payload.ok) {
+        elements.resultCard.className =
+          'card result success';
+
+        elements.statusBadge.textContent =
+          payload.status || 'تم التسجيل';
+
+        elements.resultMessage.textContent =
+          payload.time
+            ? 'وقت التسجيل: ' + payload.time
+            : 'تم تسجيل الحضور بنجاح.';
+
+        elements.registeredCount.textContent =
+          String(
+            Number(
+              elements.registeredCount.textContent || 0
+            ) + 1
+          );
+
+        elements.cameraState.textContent =
+          'تمت القراءة — أبعد الكارت ثم قرّب الكارت التالي.';
+
+        playTone('success');
+        vibrate([90,40,90]);
+
+      } else if (payload.alreadyRegistered) {
+        elements.resultCard.className =
+          'card result warning';
+
+        elements.statusBadge.textContent =
+          'مسجل بالفعل';
+
+        elements.resultMessage.textContent =
+          payload.message || 'الطالب مسجل بالفعل.';
+
+        elements.cameraState.textContent =
+          'الطالب مسجل بالفعل — أبعد الكارت.';
+
+        playTone('warning');
+        vibrate([180]);
+
+      } else {
+        elements.resultCard.className =
+          'card result error';
+
+        elements.statusBadge.textContent =
+          'لم يتم التسجيل';
+
+        elements.resultMessage.textContent =
+          payload.message || 'تعذر تسجيل الطالب.';
+
+        elements.cameraState.textContent =
+          'لم يتم التسجيل — راجع الرسالة.';
+
+        playTone('error');
+        vibrate([250,70,250]);
+      }
+
+      if (
+        student &&
+        student.code &&
+        payload.photoRef
+      ) {
+        requestJsonp(
+          'photo',
+          {
+            code:student.code
+          },
+          createRequestId(),
+          18000
+        );
+      }
+
+      unlockScanner(1400);
+    }
+
+
+    function handlePhotoResult(payload) {
+      if (!payload || !payload.ok || !payload.src) {
+        if (
+          elements.photoBox.textContent ===
+          'جاري تحميل الصورة'
+        ) {
+          elements.photoBox.textContent =
+            payload && payload.message
+              ? payload.message
+              : 'تعذر تحميل الصورة';
+        }
+
+        return;
+      }
+
+      const image = new Image();
+
+      image.onload = function () {
+        elements.photoBox.innerHTML = '';
+        elements.photoBox.appendChild(image);
+      };
+
+      image.onerror = function () {
+        elements.photoBox.textContent =
+          'تعذر عرض الصورة';
+      };
+
+      image.alt = 'صورة الطالب';
+      image.src = payload.src;
+    }
+
+
+    function showWorking(code) {
+      elements.resultCard.className =
+        'card result';
+
+      elements.photoBox.textContent =
+        'جاري التسجيل';
+
+      elements.studentName.textContent =
+        'جاري التحقق من الطالب';
+
+      elements.statusBadge.textContent =
+        'انتظر';
+
+      elements.resultMessage.textContent =
+        'الكود: ' + code;
+
+      elements.studentDetails.textContent = '';
+      elements.cameraState.textContent =
+        'تمت قراءة QR وجارٍ تسجيل الطالب...';
+    }
+
+
+    function showSimpleError(message) {
+      elements.resultCard.className =
+        'card result error';
+
+      elements.photoBox.textContent = 'تنبيه';
+      elements.studentName.textContent =
+        'تعذر تنفيذ العملية';
+      elements.statusBadge.textContent = 'خطأ';
+      elements.resultMessage.textContent = message;
+      elements.studentDetails.textContent = '';
+
+      playTone('error');
+      unlockScanner(700);
+    }
+
+
+    function unlockScanner(delay) {
+      setTimeout(function () {
+        scanLocked = false;
+
+        if (scanning) {
+          elements.cameraState.textContent =
+            'الماسح جاهز للكارت التالي.';
+        }
+      }, Number(delay || 0));
+    }
+
+
+    function cameraErrorMessage(error) {
+      const text = String(
+        error && error.message
+          ? error.message
+          : error || ''
+      );
+
+      if (/permission|notallowed/i.test(text)) {
+        return 'تم رفض إذن الكاميرا. اسمح للمتصفح باستخدام الكاميرا.';
+      }
+
+      if (/notfound|devicesnotfound/i.test(text)) {
+        return 'لم يتم العثور على كاميرا في الجهاز.';
+      }
+
+      if (/overconstrained/i.test(text)) {
+        return 'إعدادات العدسة غير مناسبة. اختر عدسة أخرى من القائمة.';
+      }
+
+      return 'تعذر تشغيل الكاميرا: ' + text;
+    }
+
+
+    function setConnection(message, state) {
+      elements.connection.textContent = message;
+      elements.connection.className =
+        'connection ' + (state || '');
+    }
+
+
+    function createRequestId() {
+      return (
+        Date.now().toString(36) +
+        Math.random().toString(36).slice(2,9)
+      );
+    }
+
+
+    function playTone(type) {
+      try {
+        const AudioContextClass =
+          window.AudioContext ||
+          window.webkitAudioContext;
+
+        if (!AudioContextClass) {
+          return;
+        }
+
+        const context = new AudioContextClass();
+        const oscillator = context.createOscillator();
+        const gain = context.createGain();
+
+        oscillator.connect(gain);
+        gain.connect(context.destination);
+
+        oscillator.frequency.value =
+          type === 'success'
+            ? 880
+            : type === 'warning'
+              ? 520
+              : 220;
+
+        gain.gain.setValueAtTime(
+          .12,
+          context.currentTime
+        );
+
+        gain.gain.exponentialRampToValueAtTime(
+          .001,
+          context.currentTime + .18
+        );
+
+        oscillator.start();
+        oscillator.stop(context.currentTime + .18);
+
+        oscillator.addEventListener(
+          'ended',
+          function () {
+            context.close();
+          }
+        );
+      } catch (error) {}
+    }
+
+
+    function vibrate(pattern) {
+      if (navigator.vibrate) {
+        navigator.vibrate(pattern);
+      }
+    }
+
+
+    function escapeHtml(value) {
+      return String(value || '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+    }
+
+
+    window.addEventListener('beforeunload', function () {
+      if (stream) {
+        stream.getTracks().forEach(function (track) {
+          track.stop();
+        });
+      }
+    });
+  </script>
+</body>
+</html>
