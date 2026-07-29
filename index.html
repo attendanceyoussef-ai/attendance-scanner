@@ -7,7 +7,7 @@
     content="width=device-width,initial-scale=1,viewport-fit=cover"
   >
   <meta name="theme-color" content="#10264f">
-  <title>ماسح الحضور السريع</title>
+  <title>ماسح الحضور السريع v4.1</title>
 
   <script
     src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"
@@ -249,7 +249,7 @@
       <div>
         <h1>ماسح الحضور السريع</h1>
         <div class="small">
-          تظل الكاميرا مفتوحة ويُسجَّل كل طالب في الخلفية.
+          تظل الكاميرا مفتوحة ويصل رد التسجيل مباشرة إلى الصفحة.
         </div>
       </div>
       <button
@@ -294,7 +294,7 @@
           class="secondary"
           type="button"
         >
-          تهيئة نافذة التسجيل
+          اختبار الاتصال
         </button>
 
         <button
@@ -307,8 +307,7 @@
       </div>
 
       <div class="small" style="margin-top:10px">
-        «تهيئة نافذة التسجيل» تفتح تبويبًا صغيرًا مرة واحدة.
-        ارجع بعد ذلك إلى صفحة الكاميرا واترك التبويب مفتوحًا.
+        اضغط «اختبار الاتصال» بعد حفظ الإعدادات. لا توجد نافذة ربط في هذه النسخة.
       </div>
     </section>
 
@@ -331,7 +330,7 @@
       </div>
 
       <div id="connection" class="connection warn">
-        أدخل الإعدادات وهيّئ نافذة التسجيل.
+        أدخل الإعدادات ثم اضغط «اختبار الاتصال».
       </div>
     </section>
 
@@ -392,19 +391,20 @@
   </main>
 
   <script>
-    const APP_SOURCE = 'YR_ATTENDANCE_SCANNER_V4';
+    const APP_SOURCE = 'YR_ATTENDANCE_SCANNER_V4_1';
     const STORAGE_URL = 'yr_attendance_web_app_url_v4';
     const STORAGE_TOKEN = 'yr_attendance_scanner_token_v4';
 
     let qrScanner = null;
     let cameraRunning = false;
     let scanLocked = false;
-    let bridgeWindow = null;
     let currentRequestId = '';
     let currentTimeout = null;
     let lastCode = '';
     let lastCodeAt = 0;
-    let currentPhotoRequestId = '';
+    let connectionReady = false;
+    const pendingJsonp = new Map();
+    const JSONP_CALLBACK = '__yrAttendanceJsonpV41';
 
     const elements = {};
 
@@ -456,7 +456,7 @@
 
       elements.openBridge.addEventListener(
         'click',
-        prepareBridgeWindow
+        testConnection
       );
 
       elements.openLogin.addEventListener(
@@ -498,14 +498,9 @@
         }
       );
 
-      window.addEventListener(
-        'message',
-        handleBridgeMessage
-      );
-
       if (hasSavedSettings()) {
         setConnection(
-          'الإعدادات محفوظة. اضغط «تهيئة نافذة التسجيل».',
+          'الإعدادات محفوظة. اضغط «اختبار الاتصال».',
           'warn'
         );
       }
@@ -557,7 +552,7 @@
       localStorage.setItem(STORAGE_TOKEN, token);
 
       setConnection(
-        'تم حفظ الإعدادات. هيّئ نافذة التسجيل.',
+        'تم حفظ الإعدادات. اضغط «اختبار الاتصال».',
         'warn'
       );
 
@@ -565,35 +560,22 @@
     }
 
 
-    function prepareBridgeWindow() {
+    function testConnection() {
       if (!saveSettings()) {
         return;
       }
 
-      const requestId = createRequestId();
-      const url = buildBridgeUrl({
-        scannerInfo:'1',
-        rid:requestId
-      });
-
-      bridgeWindow = window.open(
-        url,
-        'YR_Attendance_Bridge_V4'
+      connectionReady = false;
+      setConnection(
+        'جاري اختبار الاتصال بنظام الحضور...',
+        'warn'
       );
 
-      if (!bridgeWindow) {
-        setConnection(
-          'المتصفح منع فتح التبويب. اسمح بالنوافذ المنبثقة ثم أعد المحاولة.',
-          'error'
-        );
-        return;
-      }
-
-      currentRequestId = requestId;
-
-      setConnection(
-        'فُتحت نافذة التسجيل. ارجع إلى صفحة الكاميرا واتركها مفتوحة.',
-        'warn'
+      requestJsonp(
+        'status',
+        {},
+        createRequestId(),
+        15000
       );
     }
 
@@ -610,13 +592,13 @@
     }
 
 
-    function buildBridgeUrl(extraParams) {
+    function buildApiUrl(apiName, extraParams, requestId) {
       const url = new URL(getWebAppUrl());
 
-      url.searchParams.set(
-        'token',
-        getScannerToken()
-      );
+      url.searchParams.set('scannerApi', apiName);
+      url.searchParams.set('token', getScannerToken());
+      url.searchParams.set('callback', JSONP_CALLBACK);
+      url.searchParams.set('rid', requestId);
 
       Object.keys(extraParams || {}).forEach(function (key) {
         url.searchParams.set(key, extraParams[key]);
@@ -631,6 +613,135 @@
     }
 
 
+    function requestJsonp(
+      apiName,
+      extraParams,
+      requestId,
+      timeoutMs
+    ) {
+      const script = document.createElement('script');
+      const id = String(requestId || createRequestId());
+      const timeout = Number(timeoutMs || 15000);
+
+      script.async = true;
+      script.src = buildApiUrl(
+        apiName,
+        extraParams || {},
+        id
+      );
+
+      script.onerror = function () {
+        cleanupJsonp(id);
+
+        if (apiName === 'status') {
+          connectionReady = false;
+          setConnection(
+            'تعذر الاتصال. افتح تطبيق الحضور وسجل الدخول ثم جرّب مرة أخرى.',
+            'error'
+          );
+        } else if (apiName === 'register') {
+          showSimpleError(
+            'تعذر الوصول إلى نظام التسجيل. افتح تطبيق الحضور من زر الإعدادات ثم أعد المحاولة.'
+          );
+        }
+      };
+
+      const timer = window.setTimeout(function () {
+        cleanupJsonp(id);
+
+        if (apiName === 'status') {
+          connectionReady = false;
+          setConnection(
+            'انتهت مهلة الاتصال. افتح تطبيق الحضور وسجل الدخول ثم أعد الاختبار.',
+            'error'
+          );
+        } else if (apiName === 'register') {
+          showSimpleError(
+            'لم يصل رد التسجيل خلال الوقت المحدد.'
+          );
+        }
+      }, timeout);
+
+      pendingJsonp.set(id, {
+        script:script,
+        timer:timer,
+        apiName:apiName
+      });
+
+      document.head.appendChild(script);
+    }
+
+
+    function cleanupJsonp(requestId) {
+      const pending = pendingJsonp.get(requestId);
+
+      if (!pending) {
+        return;
+      }
+
+      window.clearTimeout(pending.timer);
+
+      if (
+        pending.script &&
+        pending.script.parentNode
+      ) {
+        pending.script.parentNode.removeChild(
+          pending.script
+        );
+      }
+
+      pendingJsonp.delete(requestId);
+    }
+
+
+    window[JSONP_CALLBACK] = function (message) {
+      if (!message || message.source !== APP_SOURCE) {
+        return;
+      }
+
+      cleanupJsonp(message.requestId);
+
+      if (
+        message.type === 'attendance-scanner-status'
+      ) {
+        handleStatusMessage(message.payload || {});
+        return;
+      }
+
+      if (
+        message.type === 'attendance-scanner-result'
+      ) {
+        if (
+          message.requestId &&
+          currentRequestId &&
+          message.requestId !== currentRequestId
+        ) {
+          return;
+        }
+
+        handleAttendanceResult(message.payload || {});
+        return;
+      }
+
+      if (
+        message.type === 'attendance-scanner-photo'
+      ) {
+        handlePhotoResult(message.payload || {});
+        return;
+      }
+
+      if (
+        message.type === 'attendance-scanner-error'
+      ) {
+        showSimpleError(
+          message.payload && message.payload.message
+            ? message.payload.message
+            : 'حدث خطأ أثناء الاتصال بالنظام.'
+        );
+      }
+    };
+
+
     async function startCamera() {
       if (!hasSavedSettings()) {
         showSimpleError(
@@ -640,12 +751,9 @@
         return;
       }
 
-      if (
-        !bridgeWindow ||
-        bridgeWindow.closed
-      ) {
+      if (!connectionReady) {
         showSimpleError(
-          'اضغط «تهيئة نافذة التسجيل» أولًا، ثم ارجع إلى صفحة الكاميرا.'
+          'اضغط «اختبار الاتصال» أولًا وتأكد أن الاتصال ناجح.'
         );
         return;
       }
@@ -702,7 +810,7 @@
         elements.stopCamera.disabled = false;
 
         setConnection(
-          'الكاميرا تعمل ونافذة التسجيل متصلة.',
+          'الكاميرا تعمل ونظام التسجيل متصل.',
           'ok'
         );
 
@@ -779,12 +887,9 @@
         return;
       }
 
-      if (
-        !bridgeWindow ||
-        bridgeWindow.closed
-      ) {
+      if (!connectionReady) {
         showSimpleError(
-          'نافذة التسجيل مغلقة. اضغط «تهيئة نافذة التسجيل» من جديد.'
+          'الاتصال بالنظام غير جاهز. اضغط «اختبار الاتصال» من جديد.'
         );
         return;
       }
@@ -796,30 +901,14 @@
 
       showWorking(parsed.code);
 
-      const url = buildBridgeUrl({
-        scanner:'1',
-        code:parsed.code,
-        rid:currentRequestId
-      });
-
-      try {
-        bridgeWindow.location.replace(url);
-      } catch (error) {
-        bridgeWindow.location = url;
-      }
-
       clearTimeout(currentTimeout);
 
-      currentTimeout = window.setTimeout(
-        function () {
-          if (scanLocked) {
-            showSimpleError(
-              'لم يصل رد التسجيل. تأكد أن نافذة التسجيل ما زالت مفتوحة وأن الحساب مسجل الدخول.'
-            );
-
-            unlockScanner(700);
-          }
+      requestJsonp(
+        'register',
+        {
+          code:parsed.code
         },
+        currentRequestId,
         15000
       );
     }
@@ -869,51 +958,17 @@
     }
 
 
-    function handleBridgeMessage(event) {
-      const message = event.data || {};
-
-      if (message.source !== APP_SOURCE) {
-        return;
-      }
-
-      if (
-        message.requestId &&
-        currentRequestId &&
-        message.requestId !== currentRequestId
-      ) {
-        return;
-      }
-
-      if (
-        message.type === 'attendance-scanner-status'
-      ) {
-        handleStatusMessage(message.payload || {});
-        return;
-      }
-
-      if (
-        message.type === 'attendance-scanner-result'
-      ) {
-        handleAttendanceResult(message.payload || {});
-        return;
-      }
-
-      if (
-        message.type === 'attendance-scanner-photo'
-      ) {
-        handlePhotoResult(message.payload || {});
-      }
-    }
-
-
     function handleStatusMessage(payload) {
       if (!payload.ok) {
+        connectionReady = false;
         setConnection(
           payload.message || 'فشل الاتصال بالنظام.',
           'error'
         );
         return;
       }
+
+      connectionReady = true;
 
       if (!payload.isOpen) {
         elements.sessionGroup.textContent = 'مغلقة';
@@ -1023,6 +1078,21 @@
       window.setTimeout(function () {
         elements.resultCard.classList.remove('pulse');
       }, 800);
+
+      if (
+        student &&
+        student.code &&
+        payload.photoRef
+      ) {
+        requestJsonp(
+          'photo',
+          {
+            code:student.code
+          },
+          createRequestId(),
+          15000
+        );
+      }
 
       unlockScanner(1300);
     }
@@ -1201,7 +1271,7 @@
           cameraRunning
         ) {
           setConnection(
-            'الكاميرا تعمل ونافذة التسجيل متصلة.',
+            'الكاميرا تعمل ونظام التسجيل متصل.',
             'ok'
           );
         }
